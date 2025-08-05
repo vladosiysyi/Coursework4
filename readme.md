@@ -15,6 +15,6 @@ python manage.py startapp
 python manage.py createsuperuser
 
 python manage.py runserver
-
+EXAMPLE
 ГГГГ-ММ-ДДTЧЧ:ММ пример 2025-08-05T21:30
 
