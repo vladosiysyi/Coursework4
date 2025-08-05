@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Клиенты</h2>
+<a href="{% url 'client_create' %}" class="btn btn-success mb-3">Добавить клиента</a>
+<table class="table table-striped w-75 mx-auto">
+  <thead>
+    <tr>
+      <th>ФИО</th>
+      <th>Email</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for client in object_list %}
+    <tr>
+      <td>{{ client.full_name }}</td>
+      <td>{{ client.email }}</td>
+      <td>
+        <a href="{% url 'client_detail' client.pk %}" class="btn btn-primary btn-sm">Просмотр</a>
+        <a href="{% url 'client_update' client.pk %}" class="btn btn-warning btn-sm">Редактировать</a>
+        <a href="{% url 'client_delete' client.pk %}" class="btn btn-danger btn-sm">Удалить</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="3">Нет клиентов.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

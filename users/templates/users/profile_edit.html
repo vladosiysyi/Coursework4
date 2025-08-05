@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Редактировать профиль</h2>
+<form method="post" enctype="multipart/form-data" class="w-50 mx-auto">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+  <a href="{% url 'profile' %}" class="btn btn-secondary ms-2">Отмена</a>
+</form>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Удалить рассылку №{{ object.pk }}?</h2>
+<form method="post" class="w-50 mx-auto">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-danger">Удалить</button>
+  <a href="{% url 'mailing_list' %}" class="btn btn-secondary ms-2">Отмена</a>
+</form>
+{% endblock %}

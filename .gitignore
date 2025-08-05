@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.p~
+
+
+# Env
+.env
+.env.*
+
+# Django
+db.sqlite3
+*.log
+*.pot
+*.pyc
+*.mo
+media/
+staticfiles/
+local_settings.py
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# macOS / Linux / Windows
+.DS_Store
+*.swp
+Thumbs.db
+
+# Migrations (оставим только нужные)
+**/migrations/*.pyc
+**/migrations/__pycache__/
+# можно раскомментировать, если хочешь не трекать миграции:
+# **/migrations/
+
+# Redis cache (если локально)
+*.rdb
+*.log
+
+# pipenv / poetry / venv
+pip-log.txt
+venv/
+ENV/
+env/

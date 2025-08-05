@@ -1,0 +1,36 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'dashboard' %}">Рассылки</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Переключить навигацию">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        {% if user.is_authenticated %}
+          <li class="nav-item"><a class="nav-link" href="{% url 'client_list' %}">Клиенты</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'message_list' %}">Сообщения</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'mailing_list' %}">Рассылки</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Профиль</a></li>
+          <li class="nav-item"><a href="{% url 'statistics' %}">Статистика</a></li>
+        {% endif %}
+        {% if user.is_authenticated and user.is_staff %}
+            <li><a href="{% url 'user_list' %}">Пользователи</a></li>
+{% endif %}
+      </ul>
+      <ul class="navbar-nav">
+        {% if user.is_authenticated %}
+          <li class="nav-item">
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-light">Выход</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Вход</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'register' %}">Регистрация</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>

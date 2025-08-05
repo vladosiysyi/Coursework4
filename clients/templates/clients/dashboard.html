@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Панель управления</h1>
+<ul class="list-group w-50 mx-auto">
+  <li class="list-group-item">Всего рассылок: {{ total_mailings }}</li>
+  <li class="list-group-item">Активных рассылок: {{ active_mailings }}</li>
+  <li class="list-group-item">Уникальных клиентов: {{ unique_clients }}</li>
+</ul>
+{% endblock %}

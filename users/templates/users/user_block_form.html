@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Изменить активность пользователя</h2>
+<form method="post">
+    {% csrf_token %}
+    <p>Вы уверены, что хотите {% if object.is_active %}заблокировать{% else %}разблокировать{% endif %} пользователя <strong>{{ object.username }}</strong>?</p>
+    <button type="submit" class="btn btn-danger">Подтвердить</button>
+    <a href="{% url 'user_list' %}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}

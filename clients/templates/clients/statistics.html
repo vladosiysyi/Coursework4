@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Статистика рассылок</h2>
+<p>Успешных отправок: {{ success_count }}</p>
+<p>Неуспешных попыток: {{ fail_count }}</p>
+<p>Всего отправлено сообщений: {{ total_sent }}</p>
+
+<h3>Мои рассылки</h3>
+<ul>
+    {% for mailing in mailings %}
+    <li>
+      Рассылка ID {{ mailing.id }} - Статус: {{ mailing.status }}
+    </li>
+    {% empty %}
+    <li>Рассылок нет</li>
+    {% endfor %}
+</ul>
+{% endblock %}
