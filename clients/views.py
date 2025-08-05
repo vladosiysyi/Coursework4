@@ -1,18 +1,25 @@
-from django.shortcuts import redirect
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
 from django.urls import reverse_lazy
-from django.core.mail import send_mail
-from django.conf import settings
+
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
-from django.core.cache import cache
+
 
 from .models import Client, Message, Mailing, MailingAttempt
 from .forms import ClientForm, MessageForm, MailingForm
+import time
+import logging
+from django.core.mail import send_mail
+from django.conf import settings
+from django.shortcuts import redirect, get_object_or_404
+from .models import Mailing, MailingAttempt
+from django.core.cache import cache
 
+
+logger = logging.getLogger(__name__)
 # Статистика с кешем страницы (15 минут)
 @method_decorator(cache_page(60 * 15), name='dispatch')
 class StatisticsView(TemplateView):
@@ -195,28 +202,41 @@ class MailingDeleteView(DeleteView):
 
 
 def send_mailing(request, pk):
-    mailing = Mailing.objects.get(pk=pk)
-    for client in mailing.recipients.all():
+    mailing = get_object_or_404(Mailing, pk=pk)
+    recipients = mailing.recipients.all()
+    subject = mailing.message.subject
+    body = mailing.message.body
+    from_email = settings.DEFAULT_FROM_EMAIL
+
+    for client in recipients:
         try:
             send_mail(
-                mailing.message.subject,
-                mailing.message.body,
-                settings.DEFAULT_FROM_EMAIL,
-                [client.email],
+                subject=subject,
+                message=body,
+                from_email=from_email,
+                recipient_list=[client.email],
                 fail_silently=False,
             )
+
             MailingAttempt.objects.create(
                 mailing=mailing,
                 status='success',
-                server_response='OK',
+                server_response=f"Sent to {client.email}",
             )
+
+            logger.info(f"Письмо отправлено на {client.email}")
+            time.sleep(2)  # Задержка, чтобы избежать блокировки SMTP
+
         except Exception as e:
             MailingAttempt.objects.create(
                 mailing=mailing,
                 status='fail',
-                server_response=str(e),
+                server_response=f"Failed for {client.email}: {str(e)}",
             )
+            logger.error(f"Ошибка отправки на {client.email}: {str(e)}")
+
     mailing.status = 'started'
     mailing.save()
+
     cache.delete(f'mailing_list_{mailing.owner.id}')
     return redirect('mailing_list')
