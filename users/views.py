@@ -1,16 +1,22 @@
-from django.contrib.auth import login
-from django.shortcuts import render, redirect
+from django.contrib.auth import login, get_user_model
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .forms import CustomUserCreationForm
-from django.contrib.auth import get_user_model
-from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
-from django.views.generic import ListView, UpdateView
-from django.urls import reverse_lazy
-from django.core.cache import cache
+from django.views.generic import ListView, View
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+
+from .forms import CustomUserCreationForm
+from .models import CustomUser
+
 
 User = get_user_model()
+
+
+def user_is_manager(user):
+    """Проверка — состоит ли пользователь в группе 'Менеджеры'."""
+    return user.groups.filter(name='Менеджеры').exists()
+
 
 def register_view(request):
     if request.method == 'POST':
@@ -41,35 +47,38 @@ def profile_edit_view(request):
     return render(request, 'users/profile_edit.html', {'form': form})
 
 
-@method_decorator(cache_page(60 * 15), name='dispatch')
+
 class UserListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
-    model = User
+    """Список пользователей — доступен только менеджерам с правом блокировки."""
+    model = CustomUser
     template_name = 'users/user_list.html'
     context_object_name = 'users'
 
     def test_func(self):
-        return self.request.user.is_staff
+        user = self.request.user
+        return user_is_manager(user) and user.has_perm('users.can_block_user')
 
     def get_queryset(self):
-        queryset = cache.get('cached_user_list')
-        if not queryset:
-            queryset = super().get_queryset()
-            cache.set('cached_user_list', queryset, 60 * 15)  # кеш на 15 минут
-        return queryset
+        return CustomUser.objects.all()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Передаём готовый флаг в шаблон, чтобы там не вызывать filter(...)
+        context['is_manager_with_perm'] = self.test_func()
+        return context
 
 
-class UserBlockToggleView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    model = User
-    fields = []  # никаких полей в форме
-    template_name = 'users/user_block_form.html'
-    success_url = reverse_lazy('user_list')
-
+class UserBlockToggleView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Включение/выключение активности пользователя."""
     def test_func(self):
-        return self.request.user.is_staff
+        return user_is_manager(self.request.user) and self.request.user.has_perm('users.can_block_user')
 
-    def form_valid(self, form):
-        user = form.instance
-        user.is_active = not user.is_active  # переключаем активность
+    def get(self, request, pk):
+        user = get_object_or_404(CustomUser, pk=pk)
+        return render(request, 'users/user_block_form.html', {'object': user})
+
+    def post(self, request, pk):
+        user = get_object_or_404(CustomUser, pk=pk)
+        user.is_active = not user.is_active
         user.save()
-        cache.delete('cached_user_list')  # сбрасываем кеш после изменения
-        return super().form_valid(form)
+        return redirect('user_list')

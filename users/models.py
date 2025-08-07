@@ -6,6 +6,11 @@ class CustomUser(AbstractUser):
         ('user', 'Пользователь'),
         ('manager', 'Менеджер'),
     )
+
+    class Meta:
+        permissions = [
+            ('can_block_user', 'Может блокировать пользователей'),
+        ]
     role = models.CharField(max_length=10, choices=USER_ROLES, default='user')
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)

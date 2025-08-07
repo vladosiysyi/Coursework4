@@ -26,12 +26,13 @@ load_dotenv()
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-uxt#6)#m1y-8=y!0i-mpj06wbg&s8c89r1e&47ptv-+tgfvtv_'
+SECRET_KEY = os.getenv('SECRET_KEY', 'fallback-secret-key')
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = []
+AUTH_USER_MODEL = 'users.CustomUser'
 
 AUTH_USER_MODEL = 'users.CustomUser'
 

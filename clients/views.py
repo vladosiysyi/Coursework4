@@ -17,8 +17,13 @@ from django.conf import settings
 from django.shortcuts import redirect, get_object_or_404
 from .models import Mailing, MailingAttempt
 from django.core.cache import cache
+from django.shortcuts import get_object_or_404, redirect
+from .models import Mailing
+from .services import send_mailing_service
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
-
+def user_is_manager(user):
+    return user.groups.filter(name='Менеджеры').exists()
 logger = logging.getLogger(__name__)
 # Статистика с кешем страницы (15 минут)
 @method_decorator(cache_page(60 * 15), name='dispatch')
@@ -65,10 +70,10 @@ class ClientListView(ListView):
     template_name = 'clients/client_list.html'
 
     def get_queryset(self):
-        key = 'client_list'
+        key = f'client_list_{self.request.user.id}'
         queryset = cache.get(key)
         if queryset is None:
-            queryset = super().get_queryset()
+            queryset = Client.objects.filter(owner=self.request.user)
             cache.set(key, queryset, 60 * 15)
         return queryset
 
@@ -83,7 +88,8 @@ class ClientCreateView(CreateView):
     success_url = reverse_lazy('client_list')
 
     def form_valid(self, form):
-        cache.delete('client_list')
+        form.instance.owner = self.request.user
+        cache.delete(f'client_list_{self.request.user.id}')
         return super().form_valid(form)
 
 class ClientUpdateView(UpdateView):
@@ -92,8 +98,11 @@ class ClientUpdateView(UpdateView):
     template_name = 'clients/client_form.html'
     success_url = reverse_lazy('client_list')
 
+    def get_queryset(self):
+        return Client.objects.filter(owner=self.request.user)
+
     def form_valid(self, form):
-        cache.delete('client_list')
+        cache.delete(f'client_list_{self.request.user.id}')
         return super().form_valid(form)
 
 class ClientDeleteView(DeleteView):
@@ -101,8 +110,11 @@ class ClientDeleteView(DeleteView):
     template_name = 'clients/client_confirm_delete.html'
     success_url = reverse_lazy('client_list')
 
+    def get_queryset(self):
+        return Client.objects.filter(owner=self.request.user)
+
     def delete(self, request, *args, **kwargs):
-        cache.delete('client_list')
+        cache.delete(f'client_list_{request.user.id}')
         return super().delete(request, *args, **kwargs)
 
 
@@ -112,10 +124,10 @@ class MessageListView(ListView):
     template_name = 'clients/message_list.html'
 
     def get_queryset(self):
-        key = 'message_list'
+        key = f'message_list_{self.request.user.id}'
         queryset = cache.get(key)
         if queryset is None:
-            queryset = super().get_queryset()
+            queryset = Message.objects.filter(owner=self.request.user)
             cache.set(key, queryset, 60 * 15)
         return queryset
 
@@ -126,7 +138,8 @@ class MessageCreateView(CreateView):
     success_url = reverse_lazy('message_list')
 
     def form_valid(self, form):
-        cache.delete('message_list')
+        form.instance.owner = self.request.user
+        cache.delete(f'message_list_{self.request.user.id}')
         return super().form_valid(form)
 
 class MessageUpdateView(UpdateView):
@@ -135,8 +148,11 @@ class MessageUpdateView(UpdateView):
     template_name = 'clients/message_form.html'
     success_url = reverse_lazy('message_list')
 
+    def get_queryset(self):
+        return Message.objects.filter(owner=self.request.user)
+
     def form_valid(self, form):
-        cache.delete('message_list')
+        cache.delete(f'message_list_{self.request.user.id}')
         return super().form_valid(form)
 
 class MessageDeleteView(DeleteView):
@@ -144,8 +160,11 @@ class MessageDeleteView(DeleteView):
     template_name = 'clients/message_confirm_delete.html'
     success_url = reverse_lazy('message_list')
 
+    def get_queryset(self):
+        return Message.objects.filter(owner=self.request.user)
+
     def delete(self, request, *args, **kwargs):
-        cache.delete('message_list')
+        cache.delete(f'message_list_{request.user.id}')
         return super().delete(request, *args, **kwargs)
 
 
@@ -156,17 +175,11 @@ class MailingListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         user = self.request.user
-        key = f'mailing_list_{user.id}'
-        queryset = cache.get(key)
-        if queryset is None:
-            if user.role == 'manager':
-                queryset = Mailing.objects.all()
-            else:
-                queryset = Mailing.objects.filter(owner=user)
-            cache.set(key, queryset, 60 * 15)
-        return queryset
+        if user_is_manager(user):
+            return Mailing.objects.all()
+        return Mailing.objects.filter(owner=user)
 
-class MailingCreateView(CreateView):
+class MailingCreateView(LoginRequiredMixin, CreateView):
     model = Mailing
     form_class = MailingForm
     template_name = 'clients/mailing_form.html'
@@ -174,20 +187,22 @@ class MailingCreateView(CreateView):
 
     def form_valid(self, form):
         form.instance.owner = self.request.user
-        cache.delete(f'mailing_list_{self.request.user.id}')
         return super().form_valid(form)
 
 class MailingUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Mailing
-    fields = ['start_time', 'end_time', 'status', 'message', 'recipients']
+    form_class = MailingForm
     template_name = 'clients/mailing_form.html'
     success_url = reverse_lazy('mailing_list')
 
     def test_func(self):
-        return self.get_object().owner == self.request.user
+        user = self.request.user
+        if user_is_manager(user):
+            # Менеджеры не могут редактировать чужие рассылки
+            return self.get_object().owner == user
+        return self.get_object().owner == user
 
     def form_valid(self, form):
-        cache.delete(f'mailing_list_{self.request.user.id}')
         return super().form_valid(form)
 
 class MailingDeleteView(DeleteView):
@@ -201,42 +216,8 @@ class MailingDeleteView(DeleteView):
 
 
 
+
 def send_mailing(request, pk):
     mailing = get_object_or_404(Mailing, pk=pk)
-    recipients = mailing.recipients.all()
-    subject = mailing.message.subject
-    body = mailing.message.body
-    from_email = settings.DEFAULT_FROM_EMAIL
-
-    for client in recipients:
-        try:
-            send_mail(
-                subject=subject,
-                message=body,
-                from_email=from_email,
-                recipient_list=[client.email],
-                fail_silently=False,
-            )
-
-            MailingAttempt.objects.create(
-                mailing=mailing,
-                status='success',
-                server_response=f"Sent to {client.email}",
-            )
-
-            logger.info(f"Письмо отправлено на {client.email}")
-            time.sleep(2)  # Задержка, чтобы избежать блокировки SMTP
-
-        except Exception as e:
-            MailingAttempt.objects.create(
-                mailing=mailing,
-                status='fail',
-                server_response=f"Failed for {client.email}: {str(e)}",
-            )
-            logger.error(f"Ошибка отправки на {client.email}: {str(e)}")
-
-    mailing.status = 'started'
-    mailing.save()
-
-    cache.delete(f'mailing_list_{mailing.owner.id}')
+    send_mailing_service(mailing)
     return redirect('mailing_list')

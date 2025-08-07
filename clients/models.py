@@ -1,9 +1,16 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+from django.db import models
 
 
 class Client(models.Model):
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='clients'
+    )
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=255)
     comment = models.TextField(blank=True)
@@ -13,6 +20,11 @@ class Client(models.Model):
 
 
 class Message(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='messages'
+    )
     subject = models.CharField(max_length=255)
     body = models.TextField()
 
@@ -21,6 +33,11 @@ class Message(models.Model):
 
 
 class Mailing(models.Model):
+    class Meta:
+        permissions = [
+            ('can_disable_mailing', 'Может отключать рассылки'),
+        ]
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -48,8 +65,6 @@ class Mailing(models.Model):
     message = models.ForeignKey(Message, on_delete=models.CASCADE)
     recipients = models.ManyToManyField(Client)
 
-    def __str__(self):
-        return f'Рассылка #{self.pk} — {self.get_status_display()}'
 
 
 class MailingAttempt(models.Model):
