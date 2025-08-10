@@ -1,3 +1,4 @@
+from django.views import View
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
@@ -7,7 +8,7 @@ from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 
-
+from users.models import CustomUser
 from .models import Client, Message, Mailing, MailingAttempt
 from .forms import ClientForm, MessageForm, MailingForm
 import time
@@ -50,7 +51,7 @@ class StatisticsView(TemplateView):
         return context
 
 # Главная панель с кешем страницы
-@method_decorator(cache_page(60 * 15), name='dispatch')
+
 class DashboardView(TemplateView):
     template_name = 'clients/dashboard.html'
 
@@ -70,12 +71,10 @@ class ClientListView(ListView):
     template_name = 'clients/client_list.html'
 
     def get_queryset(self):
-        key = f'client_list_{self.request.user.id}'
-        queryset = cache.get(key)
-        if queryset is None:
-            queryset = Client.objects.filter(owner=self.request.user)
-            cache.set(key, queryset, 60 * 15)
-        return queryset
+        user = self.request.user
+        if user_is_manager(user):
+            return CustomUser.objects.all()
+        return CustomUser.objects.filter(id=user.id)
 
 class ClientDetailView(DetailView):
     model = Client
@@ -128,7 +127,6 @@ class MessageListView(ListView):
         queryset = cache.get(key)
         if queryset is None:
             queryset = Message.objects.filter(owner=self.request.user)
-            cache.set(key, queryset, 60 * 15)
         return queryset
 
 class MessageCreateView(CreateView):
@@ -172,6 +170,12 @@ class MessageDeleteView(DeleteView):
 class MailingListView(LoginRequiredMixin, ListView):
     model = Mailing
     template_name = 'clients/mailing_list.html'
+    context_object_name = 'object_list'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_manager'] = user_is_manager(self.request.user)
+        return context
 
     def get_queryset(self):
         user = self.request.user
@@ -221,3 +225,14 @@ def send_mailing(request, pk):
     mailing = get_object_or_404(Mailing, pk=pk)
     send_mailing_service(mailing)
     return redirect('mailing_list')
+
+
+class MailingStopView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return user_is_manager(self.request.user)
+
+    def post(self, request, pk):
+        mailing = get_object_or_404(Mailing, pk=pk)
+        mailing.status = 'завершена'
+        mailing.save()
+        return redirect('mailing_list')

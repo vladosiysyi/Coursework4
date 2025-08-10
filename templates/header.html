@@ -13,10 +13,10 @@
           <li class="nav-item"><a class="nav-link" href="{% url 'mailing_list' %}">Рассылки</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Профиль</a></li>
           <li class="nav-item"><a href="{% url 'statistics' %}">Статистика</a></li>
+          {% if is_manager %}
+            <li class="nav-item"><a href="{% url 'user_list' %}">Пользователи</a></li>
+          {% endif %}
         {% endif %}
-        {% if user.is_authenticated and user.is_staff %}
-            <li><a href="{% url 'user_list' %}">Пользователи</a></li>
-{% endif %}
       </ul>
       <ul class="navbar-nav">
         {% if user.is_authenticated %}

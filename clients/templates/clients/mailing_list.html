@@ -16,9 +16,18 @@
       <td>{{ mailing.pk }}</td>
       <td>{{ mailing.get_status_display }}</td>
       <td>
-        <a href="{% url 'mailing_update' mailing.pk %}" class="btn btn-warning btn-sm">Редактировать</a>
-        <a href="{% url 'mailing_delete' mailing.pk %}" class="btn btn-danger btn-sm">Удалить</a>
-        <a href="{% url 'mailing_send' mailing.pk %}" class="btn btn-primary btn-sm">Отправить</a>
+      {% if not is_manager %}
+    <a href="{% url 'mailing_update' mailing.id %}">Редактировать</a>
+    <a href="{% url 'mailing_delete' mailing.id %}">Удалить</a>
+    <a href="{% url 'mailing_send' mailing.id %}">Отправить</a>
+{% else %}
+    {% if mailing.status != 'завершена' %}
+        <form method="post" action="{% url 'mailing_stop' mailing.id %}">
+            {% csrf_token %}
+            <button type="submit">Остановить рассылку</button>
+        </form>
+    {% endif %}
+{% endif %}
       </td>
     </tr>
     {% empty %}

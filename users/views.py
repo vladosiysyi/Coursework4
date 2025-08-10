@@ -59,7 +59,10 @@ class UserListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return user_is_manager(user) and user.has_perm('users.can_block_user')
 
     def get_queryset(self):
-        return CustomUser.objects.all()
+        # исключаем админов и менеджеров
+        return CustomUser.objects.exclude(
+            groups__name__in=['Менеджеры', 'Администраторы']
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
