@@ -73,8 +73,8 @@ class ClientListView(ListView):
     def get_queryset(self):
         user = self.request.user
         if user_is_manager(user):
-            return CustomUser.objects.all()
-        return CustomUser.objects.filter(id=user.id)
+            return Client.objects.all()
+        return Client.objects.filter(owner=user.id)
 
 class ClientDetailView(DetailView):
     model = Client
@@ -233,6 +233,6 @@ class MailingStopView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def post(self, request, pk):
         mailing = get_object_or_404(Mailing, pk=pk)
-        mailing.status = 'завершена'
+        mailing.status = 'finished'
         mailing.save()
         return redirect('mailing_list')
